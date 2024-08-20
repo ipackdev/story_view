@@ -423,6 +423,7 @@ class StoryView extends StatefulWidget {
   final Widget? stackChild;
 
   StoryView({
+    Key? key,
     required this.storyItems,
     required this.controller,
     this.onComplete,
@@ -439,7 +440,7 @@ class StoryView extends StatefulWidget {
       horizontal: 16,
       vertical: 8,
     ),
-  });
+  }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
