@@ -52,12 +52,10 @@ class _StoryVideoPlayerState extends State<StoryVideoPlayer> {
 
   void _initVideoPlayer() {
     _playerCR = VideoPlayerController.file(widget.videoLoader.videoFile!);
-
-    widget.whenVideoPlayerReady?.call(_playerCR);
-
     _playerCR.initialize().then((_) {
-      setState(() {});
       widget.storyCR.play();
+      setState(() {});
+      widget.whenVideoPlayerReady?.call(_playerCR);
     });
   }
 
@@ -100,6 +98,8 @@ class _StoryVideoPlayerState extends State<StoryVideoPlayer> {
   void dispose() {
     _playerCR.dispose();
     _streamPlayback.cancel();
+    // todo(21.08.2024): [Cannot guard a call to State.setState() from within State.dispose(). · Issue #25536 · flutter/flutter](https://github.com/flutter/flutter/issues/25536)
+
     super.dispose();
   }
 }
