@@ -29,9 +29,13 @@ class _StoryVideoPlayerState extends State<StoryVideoPlayer> {
   late VideoPlayerController _playerCR;
   late StreamSubscription<PlaybackState> _streamPlayback;
 
+  bool _isDisposed = false;
+
   @override
   void initState() {
     super.initState();
+
+    _isDisposed = false;
 
     widget.storyCR.pause();
     widget.videoLoader.loadVideo(_onCompleteLoadVideo);
@@ -53,8 +57,10 @@ class _StoryVideoPlayerState extends State<StoryVideoPlayer> {
   void _initVideoPlayer() {
     _playerCR = VideoPlayerController.file(widget.videoLoader.videoFile!);
     _playerCR.initialize().then((_) {
-      widget.storyCR.play();
-      setState(() {});
+      if (!_isDisposed) {
+        widget.storyCR.play();
+        setState(() {});
+      }
       widget.whenVideoPlayerReady?.call(_playerCR);
     });
   }
@@ -98,6 +104,7 @@ class _StoryVideoPlayerState extends State<StoryVideoPlayer> {
   void dispose() {
     _playerCR.dispose();
     _streamPlayback.cancel();
+    _isDisposed = true;
     // todo(21.08.2024): [Cannot guard a call to State.setState() from within State.dispose(). · Issue #25536 · flutter/flutter](https://github.com/flutter/flutter/issues/25536)
 
     super.dispose();
