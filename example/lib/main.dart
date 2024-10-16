@@ -51,7 +51,7 @@ class Home extends StatelessWidget {
                   StoryItem.inlineImage(
                     url: "https://image.ibb.co/gCZFbx/Banku-and-tilapia.jpg",
                     controller: controller,
-                    caption: Text(
+                    caption: const Text(
                       "Banku & Tilapia. The food to keep you charged whole day.\n#1 Local food.",
                       style: TextStyle(
                         color: Colors.white,
@@ -95,7 +95,7 @@ class Home extends StatelessWidget {
                 },
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Material(
               child: InkWell(
                 onTap: () {
