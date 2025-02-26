@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:video_player/video_player.dart';
 
 import '../controller/story_controller.dart';
 import '../utils.dart';
@@ -41,113 +40,70 @@ class VideoLoader {
 }
 
 class StoryVideo extends StatefulWidget {
-  final StoryController? storyController;
-  final VideoLoader videoLoader;
-  final Widget? loadingWidget;
-  final Widget? errorWidget;
-
   StoryVideo(
     this.videoLoader, {
     Key? key,
-    this.storyController,
+    required this.storyController,
+    // playerController!.value.aspectRatio
+    required this.playerAspectRatio,
+    required this.playerCRInit,
+    required this.onPause,
+    required this.onPlay,
+    required this.videoWidget,
     this.loadingWidget,
     this.errorWidget,
   }) : super(key: key ?? UniqueKey());
 
-  static StoryVideo url(
-    String url, {
-    StoryController? controller,
-    Map<String, dynamic>? requestHeaders,
-    Key? key,
-    Widget? loadingWidget,
-    Widget? errorWidget,
-  }) {
-    return StoryVideo(
-      VideoLoader(url, requestHeaders: requestHeaders),
-      storyController: controller,
-      key: key,
-      loadingWidget: loadingWidget,
-      errorWidget: errorWidget,
-    );
-  }
+  final StoryController storyController;
+
+  final Future<void> Function() playerCRInit;
+  final void Function() onPause;
+  final void Function() onPlay;
+  final double playerAspectRatio;
+  final Widget? videoWidget;
+
+  final VideoLoader videoLoader;
+
+  final Widget? loadingWidget;
+  final Widget? errorWidget;
 
   @override
-  State<StatefulWidget> createState() {
-    return StoryVideoState();
-  }
+  State<StatefulWidget> createState() => StoryVideoState();
 }
 
 class StoryVideoState extends State<StoryVideo> {
   Future<void>? playerLoader;
 
   StreamSubscription? _streamSubscription;
-
-  VideoPlayerController? playerController;
+  bool videoPRisInitialized = false;
 
   @override
   void initState() {
     super.initState();
 
-    widget.storyController!.pause();
+    widget.storyController.pause();
 
     widget.videoLoader.loadVideo(() {
       if (widget.videoLoader.state == LoadState.success) {
-        playerController =
-            VideoPlayerController.file(widget.videoLoader.videoFile!);
-
-        playerController!.initialize().then((v) {
-          setState(() {});
-          widget.storyController!.play();
+        widget.playerCRInit.call().then((_) {
+          setState(() {
+            videoPRisInitialized = true;
+          });
+          widget.storyController.play();
         });
 
-        if (widget.storyController != null) {
-          _streamSubscription =
-              widget.storyController!.playbackNotifier.listen((playbackState) {
-            if (playbackState == PlaybackState.pause) {
-              playerController!.pause();
-            } else {
-              playerController!.play();
-            }
-          });
-        }
+        _streamSubscription =
+            widget.storyController.playbackNotifier.listen((playbackState) {
+          if (playbackState == PlaybackState.pause) {
+            widget.onPause();
+          } else {
+            widget.onPlay();
+          }
+        });
       } else {
         setState(() {});
       }
     });
-  }
-
-  Widget getContentView() {
-    if (widget.videoLoader.state == LoadState.success &&
-        playerController!.value.isInitialized) {
-      return Center(
-        child: AspectRatio(
-          aspectRatio: playerController!.value.aspectRatio,
-          child: VideoPlayer(playerController!),
-        ),
-      );
-    }
-
-    return widget.videoLoader.state == LoadState.loading
-        ? Center(
-            child: widget.loadingWidget ??
-                const SizedBox(
-                  width: 70,
-                  height: 70,
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    strokeWidth: 3,
-                  ),
-                ),
-          )
-        : Center(
-            child: widget.errorWidget ??
-                const Text(
-                  "Media failed to load.",
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                ),
-          );
   }
 
   @override
@@ -156,13 +112,41 @@ class StoryVideoState extends State<StoryVideo> {
       color: Colors.black,
       height: double.infinity,
       width: double.infinity,
-      child: getContentView(),
+      child: Builder(
+        builder: (context) {
+          if (widget.videoLoader.state == LoadState.success &&
+              videoPRisInitialized) {
+            return Center(
+              child: AspectRatio(
+                aspectRatio: widget.playerAspectRatio,
+                child: widget.videoWidget,
+              ),
+            );
+          }
+
+          return Center(
+            child: widget.videoLoader.state == LoadState.loading
+                ? widget.loadingWidget ??
+                    const SizedBox.square(
+                      dimension: 70,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 3,
+                      ),
+                    )
+                : widget.errorWidget ??
+                    const Text(
+                      "Media failed to load",
+                      style: TextStyle(color: Colors.white),
+                    ),
+          );
+        },
+      ),
     );
   }
 
   @override
   void dispose() {
-    playerController?.dispose();
     _streamSubscription?.cancel();
     super.dispose();
   }
