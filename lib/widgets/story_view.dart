@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import '../controller/story_controller.dart';
 import '../utils.dart';
 import 'story_image.dart';
-import 'story_video.dart';
 
 /// Indicates where the progress indicators should be placed.
 enum ProgressPosition { top, bottom, none }
@@ -67,7 +66,7 @@ class StoryItem {
       255,
       255,
       255,
-    ] /** white text */);
+    ]);
 
     return StoryItem(
       Container(
@@ -224,14 +223,11 @@ class StoryItem {
   factory StoryItem.pageVideo(
     String url, {
     required StoryController controller,
+    required Widget videoWidget,
     Key? key,
     Duration? duration,
-    BoxFit imageFit = BoxFit.fitWidth,
     Widget? caption,
     bool shown = false,
-    Map<String, dynamic>? requestHeaders,
-    Widget? loadingWidget,
-    Widget? errorWidget,
   }) {
     return StoryItem(
       Container(
@@ -239,13 +235,7 @@ class StoryItem {
         color: Colors.black,
         child: Stack(
           children: <Widget>[
-            StoryVideo.url(
-              url,
-              controller: controller,
-              requestHeaders: requestHeaders,
-              loadingWidget: loadingWidget,
-              errorWidget: errorWidget,
-            ),
+            videoWidget,
             SafeArea(
               child: Align(
                 alignment: Alignment.bottomCenter,
@@ -425,7 +415,7 @@ class StoryView extends StatefulWidget {
   final Widget? stackChild;
 
   const StoryView({
-    Key? key,
+    super.key,
     required this.storyItems,
     required this.controller,
     this.onComplete,
@@ -442,7 +432,7 @@ class StoryView extends StatefulWidget {
       horizontal: 16,
       vertical: 8,
     ),
-  }) : super(key: key);
+  });
 
   @override
   State<StatefulWidget> createState() => StoryViewState();
@@ -767,8 +757,8 @@ class PageBar extends StatefulWidget {
     this.indicatorHeight = IndicatorHeight.large,
     this.indicatorColor,
     this.indicatorForegroundColor,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   State<StatefulWidget> createState() => PageBarState();
@@ -836,11 +826,11 @@ class StoryProgressIndicator extends StatelessWidget {
 
   const StoryProgressIndicator(
     this.value, {
-    Key? key,
+    super.key,
     this.indicatorHeight = 5,
     this.indicatorColor,
     this.indicatorForegroundColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -879,9 +869,7 @@ class IndicatorOval extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) {
-    return true;
-  }
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
 
 /// Concept source: https://stackoverflow.com/a/9733420
