@@ -14,19 +14,23 @@ enum IndicatorHeight { small, medium, large }
 /// Widget to display stories just like Whatsapp and Instagram. Can also be used
 /// inline/inside [ListView] or [Column] just like Google News app. Comes with
 /// gestures to pause, forward and go to previous page.
-class StoryView<T> extends StatefulWidget {
+class StoryView extends StatefulWidget {
   /// The pages to displayed.
-  final List<T> storyItems;
+  final int itemCount;
 
   /// Callback for when a full cycle of story is shown. This will be called
   /// each time the full story completes when [repeat] is set to `true`.
   final VoidCallback? onComplete;
 
   /// Callback for when a story and it index is currently being shown.
-  final void Function(T storyItem, int index)? onStoryShow;
+  final void Function(int index)? onStoryShow;
 
   /// Callback for when a show story widget.
-  final Widget Function(BuildContext context, T storyItem, int index) builder;
+  final Widget Function(
+    BuildContext context,
+    int index,
+    void Function(Duration duration) onReady,
+  ) itemBuilder;
 
   /// Where the progress indicator should be placed.
   final ProgressPosition progressPosition;
@@ -59,12 +63,12 @@ class StoryView<T> extends StatefulWidget {
 
   const StoryView({
     super.key,
-    required this.storyItems,
+    required this.itemCount,
     required this.controller,
     this.onComplete,
     this.stackChild,
     this.onStoryShow,
-    required this.builder,
+    required this.itemBuilder,
     this.progressPosition = ProgressPosition.top,
     this.repeat = false,
     this.inline = false,
@@ -88,14 +92,9 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
   StreamSubscription<PlaybackState>? _playbackSub;
 
-  int currentStoryIndex = 0;
-
-  int get _currentStoryIndex => currentStoryIndex;
-
-  set _currentStoryIndex(int value) {
-    print('now index: $value');
-    currentStoryIndex = value;
-  }
+  Completer? _isReady;
+  int _currentStoryIndex = 0;
+  Duration? _currentDuration;
 
   @override
   void initState() {
@@ -143,19 +142,19 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
     if (mounted) super.setState(fn);
   }
 
-  void _play() {
+  Future<void> _play() async {
     _animationCR?.dispose();
 
     // get the next playing page
-    final storyItem = widget.storyItems[_currentStoryIndex];
-    widget.onStoryShow?.call(storyItem, _currentStoryIndex);
-    _animationCR =
-        AnimationController(duration: storyItem.duration, vsync: this);
+    widget.onStoryShow?.call(_currentStoryIndex);
+    await _isReady?.future;
+
+    _animationCR = AnimationController(duration: _currentDuration, vsync: this);
 
     _animationCR!.addStatusListener((status) {
       print(status);
       if (status == AnimationStatus.completed) {
-        if (_currentStoryIndex + 1 == widget.storyItems.length) {
+        if (_currentStoryIndex + 1 == widget.itemCount) {
           _onComplete();
         } else {
           _currentStoryIndex += 1;
@@ -191,7 +190,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
   void _goForward() {
     _currentStoryIndex += 1;
-    if (_currentStoryIndex + 1 != widget.storyItems.length) {
+    if (_currentStoryIndex + 1 != widget.itemCount) {
       _animationCR!.stop();
       _beginPlay();
     } else {
@@ -212,16 +211,21 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
     _nextDebouncer = Timer(const Duration(milliseconds: 500), () {});
   }
 
+  void _onReady(Duration duration) {
+    _currentDuration = duration;
+    _isReady?.complete();
+  }
+
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
       color: Colors.white,
       child: Stack(
         children: <Widget>[
-          widget.builder(
+          widget.itemBuilder(
             context,
-            widget.storyItems[_currentStoryIndex]!,
             _currentStoryIndex,
+            _onReady,
           ),
           Visibility(
             visible: widget.progressPosition != ProgressPosition.none,
@@ -236,7 +240,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
                   child: PageBar(
                     key: UniqueKey(),
                     currentIndex: _currentStoryIndex,
-                    itemCount: widget.storyItems.length,
+                    itemCount: widget.itemCount,
                     animation: _currentAnimation,
                     indicatorHeight: widget.indicatorHeight,
                     indicatorColor: widget.indicatorColor,
@@ -246,8 +250,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
               ),
             ),
           ),
-          Align(
-            alignment: Alignment.center,
+          Center(
             heightFactor: 1,
             child: SizedBox(
               width: MediaQuery.sizeOf(context).width - 140,
@@ -311,7 +314,17 @@ class PageData {
 
 /// Horizontal bar displaying a row of [StoryProgressIndicator] based on the
 /// [pages] provided.
-class PageBar extends StatefulWidget {
+class PageBar extends StatelessWidget {
+  const PageBar({
+    required this.itemCount,
+    required this.currentIndex,
+    required this.animation,
+    this.indicatorHeight = IndicatorHeight.large,
+    this.indicatorColor,
+    this.indicatorForegroundColor,
+    super.key,
+  });
+
   final int itemCount;
   final int currentIndex;
   final Animation<double>? animation;
@@ -319,59 +332,44 @@ class PageBar extends StatefulWidget {
   final Color? indicatorColor;
   final Color? indicatorForegroundColor;
 
-  const PageBar({
-    required this.itemCount,
-    required this.currentIndex,
-    this.animation,
-    this.indicatorHeight = IndicatorHeight.large,
-    this.indicatorColor,
-    this.indicatorForegroundColor,
-    super.key,
-  });
-
-  @override
-  State<StatefulWidget> createState() => PageBarState();
-}
-
-class PageBarState extends State<PageBar> {
-  double spacing = 4;
-
-  @override
-  void initState() {
-    super.initState();
-
-    int count = widget.itemCount;
-    spacing = (count > 15) ? 2 : ((count > 10) ? 3 : 4);
-
-    widget.animation!.addListener(() => setState(() {}));
-  }
-
-  @override
-  void setState(fn) {
-    if (mounted) super.setState(fn);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final double spacing = (itemCount > 15) ? 2 : ((itemCount > 10) ? 3 : 4);
+
     return Row(
       children: [
-        for (var i = 0; i < widget.itemCount; ++i)
+        for (var i = 0; i < itemCount; ++i)
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(
-                right:
-                    widget.currentIndex + 1 == widget.itemCount ? 0 : spacing,
+                right: currentIndex + 1 == itemCount ? 0 : spacing,
               ),
-              child: StoryProgressIndicator(
-                widget.currentIndex == i ? widget.animation!.value : 0,
-                indicatorHeight: widget.indicatorHeight == IndicatorHeight.large
-                    ? 5
-                    : widget.indicatorHeight == IndicatorHeight.medium
-                        ? 3
-                        : 2,
-                indicatorColor: widget.indicatorColor,
-                indicatorForegroundColor: widget.indicatorForegroundColor,
-              ),
+              child: animation != null
+                  ? AnimatedBuilder(
+                      animation: animation!,
+                      builder: (context, _) {
+                        return StoryProgressIndicator(
+                          currentIndex == i ? animation!.value : 0,
+                          indicatorHeight: switch (indicatorHeight) {
+                            IndicatorHeight.large => 5,
+                            IndicatorHeight.medium => 3,
+                            IndicatorHeight.small => 2,
+                          },
+                          indicatorColor: indicatorColor,
+                          indicatorForegroundColor: indicatorForegroundColor,
+                        );
+                      },
+                    )
+                  : StoryProgressIndicator(
+                      0,
+                      indicatorHeight: switch (indicatorHeight) {
+                        IndicatorHeight.large => 5,
+                        IndicatorHeight.medium => 3,
+                        IndicatorHeight.small => 2,
+                      },
+                      indicatorColor: indicatorColor,
+                      indicatorForegroundColor: indicatorForegroundColor,
+                    ),
             ),
           ),
       ],
@@ -399,9 +397,7 @@ class StoryProgressIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      size: Size.fromHeight(
-        indicatorHeight,
-      ),
+      size: Size.fromHeight(indicatorHeight),
       foregroundPainter: IndicatorOval(
         indicatorForegroundColor ?? Colors.white.withOpacity(0.8),
         value,
