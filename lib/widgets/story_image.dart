@@ -141,7 +141,7 @@ class StoryImageState extends State<StoryImage> {
 
     widget.controller?.pause();
 
-    widget.imageLoader.loadImage(() async {
+    widget.imageLoader.loadImage(() {
       if (mounted) {
         if (widget.imageLoader.state == LoadState.success) {
           widget.controller?.play();
@@ -169,7 +169,7 @@ class StoryImageState extends State<StoryImage> {
     }
   }
 
-  void forward() async {
+  Future<void> forward() async {
     _timer?.cancel();
 
     if (widget.controller != null &&
@@ -182,51 +182,49 @@ class StoryImageState extends State<StoryImage> {
 
     currentFrame = nextFrame.image;
 
-    if (nextFrame.duration > const Duration(milliseconds: 0)) {
+    if (nextFrame.duration > Duration.zero) {
       _timer = Timer(nextFrame.duration, forward);
     }
 
     setState(() {});
   }
 
-  Widget getContentView() {
-    switch (widget.imageLoader.state) {
-      case LoadState.success:
-        return RawImage(
-          image: currentFrame,
-          fit: widget.fit,
-        );
-      case LoadState.failure:
-        return Center(
-          child: widget.errorWidget ??
-              const Text(
-                "Image failed to load.",
-                style: TextStyle(
-                  color: Colors.white,
-                ),
-              ),
-        );
-      default:
-        return Center(
-          child: widget.loadingWidget ??
-              const SizedBox(
-                width: 70,
-                height: 70,
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  strokeWidth: 3,
-                ),
-              ),
-        );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: double.infinity,
-      child: getContentView(),
+    return SizedBox.expand(
+      child: Builder(
+        builder: (context) {
+          switch (widget.imageLoader.state) {
+            case LoadState.success:
+              return RawImage(
+                image: currentFrame,
+                fit: widget.fit,
+              );
+            case LoadState.failure:
+              return Center(
+                child: widget.errorWidget ??
+                    const Text(
+                      "Image failed to load.",
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+              );
+            default:
+              return Center(
+                child: widget.loadingWidget ??
+                    const SizedBox(
+                      width: 70,
+                      height: 70,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 3,
+                      ),
+                    ),
+              );
+          }
+        },
+      ),
     );
   }
 }

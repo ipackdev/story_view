@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:story_view/controller/story_controller.dart';
@@ -92,7 +91,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
   StreamSubscription<PlaybackState>? _playbackSub;
 
-  Completer? _isReady;
+  Completer _isReady = Completer();
   int _currentStoryIndex = 0;
   Duration? _currentDuration;
 
@@ -102,11 +101,12 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
     _playbackSub = widget.controller.playbackNotifier.listen(_listenPlayback);
 
-    _play();
+    _play().then((_) => setState(() {}));
   }
 
-  void _listenPlayback(PlaybackState playbackStatus) {
+  Future<void> _listenPlayback(PlaybackState playbackStatus) async {
     print(playbackStatus);
+    await _isReady?.future;
     switch (playbackStatus) {
       case PlaybackState.play:
         _removeNextHold();
@@ -128,7 +128,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    print('dispose');
+    print('$StoryViewState dispose');
     _clearDebouncer();
 
     _animationCR?.dispose();
@@ -145,9 +145,8 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   Future<void> _play() async {
     _animationCR?.dispose();
 
-    // get the next playing page
     widget.onStoryShow?.call(_currentStoryIndex);
-    await _isReady?.future;
+    await _isReady.future;
 
     _animationCR = AnimationController(duration: _currentDuration, vsync: this);
 
@@ -184,13 +183,14 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 
   void _goBack() {
-    _currentStoryIndex -= 1;
+    if (_currentStoryIndex != 0) _currentStoryIndex -= 1;
     _beginPlay();
   }
 
   void _goForward() {
-    _currentStoryIndex += 1;
     if (_currentStoryIndex + 1 != widget.itemCount) {
+      _currentStoryIndex += 1;
+
       _animationCR!.stop();
       _beginPlay();
     } else {
@@ -212,8 +212,10 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 
   void _onReady(Duration duration) {
-    _currentDuration = duration;
-    _isReady?.complete();
+    if (_isReady.isCompleted == false) {
+      _currentDuration = duration;
+      _isReady.complete();
+    }
   }
 
   @override
@@ -238,7 +240,6 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
                 child: Padding(
                   padding: widget.indicatorOuterPadding,
                   child: PageBar(
-                    key: UniqueKey(),
                     currentIndex: _currentStoryIndex,
                     itemCount: widget.itemCount,
                     animation: _currentAnimation,
@@ -258,16 +259,8 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
                 onTapDown: (_) {
                   widget.controller.pause();
                 },
-                onTapCancel: () {
-                  widget.controller.play();
-                },
                 onTapUp: (_) {
-                  // if debounce timed out (not active) then continue anim
-                  if (_nextDebouncer?.isActive == false) {
-                    widget.controller.play();
-                  } else {
-                    widget.controller.next();
-                  }
+                  widget.controller.play();
                 },
               ),
             ),
@@ -334,7 +327,7 @@ class PageBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double spacing = (itemCount > 15) ? 2 : ((itemCount > 10) ? 3 : 4);
+    final double spacing = (itemCount > 15) ? 2 : (itemCount > 10 ? 3 : 4);
 
     return Row(
       children: [
@@ -342,7 +335,7 @@ class PageBar extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(
-                right: currentIndex + 1 == itemCount ? 0 : spacing,
+                right: spacing,
               ),
               child: animation != null
                   ? AnimatedBuilder(
@@ -411,10 +404,10 @@ class StoryProgressIndicator extends StatelessWidget {
 }
 
 class IndicatorOval extends CustomPainter {
+  const IndicatorOval(this.color, this.widthFactor);
+
   final Color color;
   final double widthFactor;
-
-  IndicatorOval(this.color, this.widthFactor);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -430,18 +423,4 @@ class IndicatorOval extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => true;
-}
-
-/// Concept source: https://stackoverflow.com/a/9733420
-class ContrastHelper {
-  static double luminance(int? r, int? g, int? b) {
-    final a = [r, g, b].map((it) {
-      double value = it!.toDouble() / 255.0;
-      return value <= 0.03928
-          ? value / 12.92
-          : pow((value + 0.055) / 1.055, 2.4);
-    }).toList();
-
-    return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
-  }
 }
