@@ -2,9 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-
-import '../controller/story_controller.dart';
-import '../utils.dart';
+import 'package:story_view/controller/story_controller.dart';
 
 /// Indicates where the progress indicators should be placed.
 enum ProgressPosition { top, bottom, none }
@@ -13,34 +11,22 @@ enum ProgressPosition { top, bottom, none }
 /// should use [small]
 enum IndicatorHeight { small, medium, large }
 
-class StoryItem {
-  bool shown = false;
-  Duration duration = Duration(seconds: 3);
-}
-
 /// Widget to display stories just like Whatsapp and Instagram. Can also be used
 /// inline/inside [ListView] or [Column] just like Google News app. Comes with
 /// gestures to pause, forward and go to previous page.
-class StoryView extends StatefulWidget {
+class StoryView<T> extends StatefulWidget {
   /// The pages to displayed.
-  final List<StoryItem?> storyItems;
+  final List<T> storyItems;
 
   /// Callback for when a full cycle of story is shown. This will be called
   /// each time the full story completes when [repeat] is set to `true`.
   final VoidCallback? onComplete;
 
-  /// Callback for when a vertical swipe gesture is detected. If you do not
-  /// want to listen to such event, do not provide it. For instance,
-  /// for inline stories inside ListViews, it is preferrable to not to
-  /// provide this callback so as to enable scroll events on the list view.
-  final Function(Direction?)? onVerticalSwipeComplete;
-
   /// Callback for when a story and it index is currently being shown.
-  final void Function(StoryItem storyItem, int index)? onStoryShow;
+  final void Function(T storyItem, int index)? onStoryShow;
 
   /// Callback for when a show story widget.
-  final Widget Function(BuildContext context, StoryItem storyItem, int index)
-      builder;
+  final Widget Function(BuildContext context, T storyItem, int index) builder;
 
   /// Where the progress indicator should be placed.
   final ProgressPosition progressPosition;
@@ -82,7 +68,6 @@ class StoryView extends StatefulWidget {
     this.progressPosition = ProgressPosition.top,
     this.repeat = false,
     this.inline = false,
-    this.onVerticalSwipeComplete,
     this.indicatorColor,
     this.indicatorForegroundColor,
     this.indicatorHeight = IndicatorHeight.large,
@@ -102,8 +87,6 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   Timer? _nextDebouncer;
 
   StreamSubscription<PlaybackState>? _playbackSub;
-
-  VerticalDragInfo? verticalDragInfo;
 
   int currentStoryIndex = 0;
 
@@ -129,22 +112,18 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
       case PlaybackState.play:
         _removeNextHold();
         _animationCR?.forward();
-        break;
 
       case PlaybackState.pause:
         _holdNext(); // then pause animation
         _animationCR?.stop(canceled: false);
-        break;
 
       case PlaybackState.next:
         _removeNextHold();
         _goForward();
-        break;
 
       case PlaybackState.previous:
         _removeNextHold();
         _goBack();
-        break;
     }
   }
 
@@ -168,7 +147,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
     _animationCR?.dispose();
 
     // get the next playing page
-    final storyItem = widget.storyItems[_currentStoryIndex]!;
+    final storyItem = widget.storyItems[_currentStoryIndex];
     widget.onStoryShow?.call(storyItem, _currentStoryIndex);
     _animationCR =
         AnimationController(duration: storyItem.duration, vsync: this);
@@ -235,7 +214,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ColoredBox(
       color: Colors.white,
       child: Stack(
         children: <Widget>[
@@ -251,7 +230,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
                   ? Alignment.topCenter
                   : Alignment.bottomCenter,
               child: SafeArea(
-                bottom: widget.inline ? false : true,
+                bottom: !widget.inline,
                 child: Padding(
                   padding: widget.indicatorOuterPadding,
                   child: PageBar(
@@ -469,8 +448,4 @@ class ContrastHelper {
 
     return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
   }
-
-  static double contrast(rgb1, rgb2) =>
-      luminance(rgb2[0], rgb2[1], rgb2[2]) /
-      luminance(rgb1[0], rgb1[1], rgb1[2]);
 }
