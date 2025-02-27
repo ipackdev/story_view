@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:collection/collection.dart' show IterableExtension;
 import 'package:flutter/material.dart';
 
 import '../controller/story_controller.dart';
 import '../utils.dart';
-import 'story_image.dart';
 
 /// Indicates where the progress indicators should be placed.
 enum ProgressPosition { top, bottom, none }
@@ -15,354 +13,9 @@ enum ProgressPosition { top, bottom, none }
 /// should use [small]
 enum IndicatorHeight { small, medium, large }
 
-/// This is a representation of a story item (or page).
 class StoryItem {
-  /// Specifies how long the page should be displayed. It should be a reasonable
-  /// amount of time greater than 0 milliseconds.
-  final Duration duration;
-
-  /// Has this page been shown already? This is used to indicate that the page
-  /// has been displayed. If some pages are supposed to be skipped in a story,
-  /// mark them as shown `shown = true`.
-  ///
-  /// However, during initialization of the story view, all pages after the
-  /// last unshown page will have their `shown` attribute altered to false. This
-  /// is because the next item to be displayed is taken by the last unshown
-  /// story item.
-  bool shown;
-
-  /// The page content
-  final Widget view;
-  StoryItem(
-    this.view, {
-    required this.duration,
-    this.shown = false,
-  });
-
-  /// Short hand to create text-only page.
-  ///
-  /// [title] is the text to be displayed on [backgroundColor]. The text color
-  /// alternates between [Colors.black] and [Colors.white] depending on the
-  /// calculated contrast. This is to ensure readability of text.
-  ///
-  /// Works for inline and full-page stories. See [StoryView.inline] for more on
-  /// what inline/full-page means.
-  static StoryItem text({
-    required String title,
-    required Color backgroundColor,
-    Key? key,
-    TextStyle? textStyle,
-    bool shown = false,
-    bool roundedTop = false,
-    bool roundedBottom = false,
-    EdgeInsetsGeometry? textOuterPadding,
-    Duration? duration,
-  }) {
-    double contrast = ContrastHelper.contrast([
-      backgroundColor.red,
-      backgroundColor.green,
-      backgroundColor.blue,
-    ], [
-      255,
-      255,
-      255,
-    ]);
-
-    return StoryItem(
-      Container(
-        key: key,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(roundedTop ? 8 : 0),
-            bottom: Radius.circular(roundedBottom ? 8 : 0),
-          ),
-        ),
-        padding: textOuterPadding ??
-            const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 16,
-            ),
-        child: Center(
-          child: Text(
-            title,
-            style: textStyle?.copyWith(
-                  color: contrast > 1.8 ? Colors.white : Colors.black,
-                ) ??
-                TextStyle(
-                  color: contrast > 1.8 ? Colors.white : Colors.black,
-                  fontSize: 18,
-                ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        //color: backgroundColor,
-      ),
-      shown: shown,
-      duration: duration ?? const Duration(seconds: 3),
-    );
-  }
-
-  /// Factory constructor for page images. [controller] should be same instance as
-  /// one passed to the `StoryView`
-  factory StoryItem.pageImage({
-    required String url,
-    required StoryController controller,
-    Key? key,
-    BoxFit imageFit = BoxFit.fitWidth,
-    Text? caption,
-    bool shown = false,
-    Map<String, dynamic>? requestHeaders,
-    Widget? loadingWidget,
-    Widget? errorWidget,
-    EdgeInsetsGeometry? captionOuterPadding,
-    Duration? duration,
-  }) {
-    return StoryItem(
-      Container(
-        key: key,
-        color: Colors.black,
-        child: Stack(
-          children: <Widget>[
-            StoryImage.url(
-              url,
-              controller: controller,
-              fit: imageFit,
-              requestHeaders: requestHeaders,
-              loadingWidget: loadingWidget,
-              errorWidget: errorWidget,
-            ),
-            SafeArea(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(
-                    bottom: 24,
-                  ),
-                  padding: captionOuterPadding ??
-                      const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 8,
-                      ),
-                  color: caption != null ? Colors.black54 : Colors.transparent,
-                  child: caption ?? const SizedBox.shrink(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      shown: shown,
-      duration: duration ?? const Duration(seconds: 3),
-    );
-  }
-
-  /// Shorthand for creating inline image. [controller] should be same instance as
-  /// one passed to the `StoryView`
-  factory StoryItem.inlineImage({
-    required String url,
-    Text? caption,
-    required StoryController controller,
-    Key? key,
-    BoxFit imageFit = BoxFit.cover,
-    Map<String, dynamic>? requestHeaders,
-    bool shown = false,
-    bool roundedTop = true,
-    bool roundedBottom = false,
-    Widget? loadingWidget,
-    Widget? errorWidget,
-    EdgeInsetsGeometry? captionOuterPadding,
-    Duration? duration,
-  }) {
-    return StoryItem(
-      ClipRRect(
-        key: key,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(roundedTop ? 8 : 0),
-          bottom: Radius.circular(roundedBottom ? 8 : 0),
-        ),
-        child: Container(
-          color: Colors.grey[100],
-          child: Container(
-            color: Colors.black,
-            child: Stack(
-              children: <Widget>[
-                StoryImage.url(
-                  url,
-                  controller: controller,
-                  fit: imageFit,
-                  requestHeaders: requestHeaders,
-                  loadingWidget: loadingWidget,
-                  errorWidget: errorWidget,
-                ),
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: captionOuterPadding ??
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  child: Align(
-                    alignment: Alignment.bottomLeft,
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: caption ?? const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      shown: shown,
-      duration: duration ?? const Duration(seconds: 3),
-    );
-  }
-
-  /// Shorthand for creating page video. [controller] should be same instance as
-  /// one passed to the `StoryView`
-  factory StoryItem.pageVideo(
-    String url, {
-    required StoryController controller,
-    required Widget videoWidget,
-    Key? key,
-    Duration? duration,
-    Widget? caption,
-    bool shown = false,
-  }) {
-    return StoryItem(
-      Container(
-        key: key,
-        color: Colors.black,
-        child: Stack(
-          children: <Widget>[
-            videoWidget,
-            SafeArea(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 24),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  color: caption != null ? Colors.black54 : Colors.transparent,
-                  child: caption ?? const SizedBox.shrink(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      shown: shown,
-      duration: duration ?? const Duration(seconds: 10),
-    );
-  }
-
-  /// Shorthand for creating a story item from an image provider such as `AssetImage`
-  /// or `NetworkImage`. However, the story continues to play while the image loads
-  /// up.
-  factory StoryItem.pageProviderImage(
-    ImageProvider image, {
-    Key? key,
-    BoxFit imageFit = BoxFit.fitWidth,
-    String? caption,
-    bool shown = false,
-    Duration? duration,
-  }) {
-    return StoryItem(
-      Container(
-        key: key,
-        color: Colors.black,
-        child: Stack(
-          children: <Widget>[
-            Center(
-              child: Image(
-                image: image,
-                height: double.infinity,
-                width: double.infinity,
-                fit: imageFit,
-              ),
-            ),
-            SafeArea(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(
-                    bottom: 24,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 8,
-                  ),
-                  color: caption != null ? Colors.black54 : Colors.transparent,
-                  child: caption != null
-                      ? Text(
-                          caption,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.white,
-                          ),
-                          textAlign: TextAlign.center,
-                        )
-                      : const SizedBox(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      shown: shown,
-      duration: duration ?? const Duration(seconds: 3),
-    );
-  }
-
-  /// Shorthand for creating an inline story item from an image provider such as `AssetImage`
-  /// or `NetworkImage`. However, the story continues to play while the image loads
-  /// up.
-  factory StoryItem.inlineProviderImage(
-    ImageProvider image, {
-    Key? key,
-    Text? caption,
-    bool shown = false,
-    bool roundedTop = true,
-    bool roundedBottom = false,
-    Duration? duration,
-  }) {
-    return StoryItem(
-      Container(
-        key: key,
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(roundedTop ? 8 : 0),
-            bottom: Radius.circular(roundedBottom ? 8 : 0),
-          ),
-          image: DecorationImage(
-            image: image,
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Container(
-          margin: const EdgeInsets.only(
-            bottom: 16,
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 8,
-          ),
-          child: Align(
-            alignment: Alignment.bottomLeft,
-            child: SizedBox(
-              width: double.infinity,
-              child: caption ?? const SizedBox(),
-            ),
-          ),
-        ),
-      ),
-      shown: shown,
-      duration: duration ?? const Duration(seconds: 3),
-    );
-  }
+  bool shown = false;
+  Duration duration = Duration(seconds: 3);
 }
 
 /// Widget to display stories just like Whatsapp and Instagram. Can also be used
@@ -384,6 +37,10 @@ class StoryView extends StatefulWidget {
 
   /// Callback for when a story and it index is currently being shown.
   final void Function(StoryItem storyItem, int index)? onStoryShow;
+
+  /// Callback for when a show story widget.
+  final Widget Function(BuildContext context, StoryItem storyItem, int index)
+      builder;
 
   /// Where the progress indicator should be placed.
   final ProgressPosition progressPosition;
@@ -421,6 +78,7 @@ class StoryView extends StatefulWidget {
     this.onComplete,
     this.stackChild,
     this.onStoryShow,
+    required this.builder,
     this.progressPosition = ProgressPosition.top,
     this.repeat = false,
     this.inline = false,
@@ -439,178 +97,127 @@ class StoryView extends StatefulWidget {
 }
 
 class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
-  AnimationController? _animationController;
+  AnimationController? _animationCR;
   Animation<double>? _currentAnimation;
   Timer? _nextDebouncer;
 
-  StreamSubscription<PlaybackState>? _playbackSubscription;
+  StreamSubscription<PlaybackState>? _playbackSub;
 
   VerticalDragInfo? verticalDragInfo;
 
-  StoryItem? get _currentStory {
-    return widget.storyItems.firstWhereOrNull((it) => !it!.shown);
-  }
+  int currentStoryIndex = 0;
 
-  Widget get _currentView {
-    var item = widget.storyItems.firstWhereOrNull((it) => !it!.shown);
-    item ??= widget.storyItems.last;
-    return item?.view ?? Container();
+  int get _currentStoryIndex => currentStoryIndex;
+
+  set _currentStoryIndex(int value) {
+    print('now index: $value');
+    currentStoryIndex = value;
   }
 
   @override
   void initState() {
     super.initState();
 
-    // All pages after the first unshown page should have their shown value as
-    // false
-    final firstPage = widget.storyItems.firstWhereOrNull((it) => !it!.shown);
-    if (firstPage == null) {
-      for (var it2 in widget.storyItems) {
-        it2!.shown = false;
-      }
-    } else {
-      final lastShownPos = widget.storyItems.indexOf(firstPage);
-      widget.storyItems.sublist(lastShownPos).forEach((it) {
-        it!.shown = false;
-      });
-    }
-
-    _playbackSubscription =
-        widget.controller.playbackNotifier.listen((playbackStatus) {
-      switch (playbackStatus) {
-        case PlaybackState.play:
-          _removeNextHold();
-          _animationController?.forward();
-          break;
-
-        case PlaybackState.pause:
-          _holdNext(); // then pause animation
-          _animationController?.stop(canceled: false);
-          break;
-
-        case PlaybackState.next:
-          _removeNextHold();
-          _goForward();
-          break;
-
-        case PlaybackState.previous:
-          _removeNextHold();
-          _goBack();
-          break;
-      }
-    });
+    _playbackSub = widget.controller.playbackNotifier.listen(_listenPlayback);
 
     _play();
   }
 
+  void _listenPlayback(PlaybackState playbackStatus) {
+    print(playbackStatus);
+    switch (playbackStatus) {
+      case PlaybackState.play:
+        _removeNextHold();
+        _animationCR?.forward();
+        break;
+
+      case PlaybackState.pause:
+        _holdNext(); // then pause animation
+        _animationCR?.stop(canceled: false);
+        break;
+
+      case PlaybackState.next:
+        _removeNextHold();
+        _goForward();
+        break;
+
+      case PlaybackState.previous:
+        _removeNextHold();
+        _goBack();
+        break;
+    }
+  }
+
   @override
   void dispose() {
+    print('dispose');
     _clearDebouncer();
 
-    _animationController?.dispose();
-    _playbackSubscription?.cancel();
+    _animationCR?.dispose();
+    _playbackSub?.cancel();
 
     super.dispose();
   }
 
   @override
   void setState(fn) {
-    if (mounted) {
-      super.setState(fn);
-    }
+    if (mounted) super.setState(fn);
   }
 
   void _play() {
-    _animationController?.dispose();
+    _animationCR?.dispose();
+
     // get the next playing page
-    final storyItem = widget.storyItems.firstWhere((it) {
-      return !it!.shown;
-    })!;
-
-    final storyItemIndex = widget.storyItems.indexOf(storyItem);
-
-    if (widget.onStoryShow != null) {
-      widget.onStoryShow!(storyItem, storyItemIndex);
-    }
-
-    _animationController =
+    final storyItem = widget.storyItems[_currentStoryIndex]!;
+    widget.onStoryShow?.call(storyItem, _currentStoryIndex);
+    _animationCR =
         AnimationController(duration: storyItem.duration, vsync: this);
 
-    _animationController!.addStatusListener((status) {
+    _animationCR!.addStatusListener((status) {
+      print(status);
       if (status == AnimationStatus.completed) {
-        storyItem.shown = true;
-        if (widget.storyItems.last != storyItem) {
-          _beginPlay();
-        } else {
-          // done playing
+        if (_currentStoryIndex + 1 == widget.storyItems.length) {
           _onComplete();
+        } else {
+          _currentStoryIndex += 1;
+          _beginPlay();
         }
       }
     });
 
-    _currentAnimation =
-        Tween(begin: 0.0, end: 1.0).animate(_animationController!);
+    _currentAnimation = Tween(begin: 0.0, end: 1.0).animate(_animationCR!);
 
     widget.controller.play();
   }
 
   void _beginPlay() {
-    setState(() {});
     _play();
+    setState(() {});
   }
 
   void _onComplete() {
-    if (widget.onComplete != null) {
-      widget.controller.pause();
-      widget.onComplete!();
-    }
+    widget.onComplete?.call();
+    if (widget.onComplete != null) widget.controller.pause();
 
     if (widget.repeat) {
-      for (var it in widget.storyItems) {
-        it!.shown = false;
-      }
-
+      _currentStoryIndex = 0;
       _beginPlay();
     }
   }
 
   void _goBack() {
-    _animationController!.stop();
-
-    if (_currentStory == null) {
-      widget.storyItems.last!.shown = false;
-    }
-
-    if (_currentStory == widget.storyItems.first) {
-      _beginPlay();
-    } else {
-      _currentStory!.shown = false;
-      int lastPos = widget.storyItems.indexOf(_currentStory);
-      final previous = widget.storyItems[lastPos - 1]!;
-
-      previous.shown = false;
-
-      _beginPlay();
-    }
+    _currentStoryIndex -= 1;
+    _beginPlay();
   }
 
   void _goForward() {
-    if (_currentStory != widget.storyItems.last) {
-      _animationController!.stop();
-
-      // get last showing
-      final last = _currentStory;
-
-      if (last != null) {
-        last.shown = true;
-        if (last != widget.storyItems.last) {
-          _beginPlay();
-        }
-      }
+    _currentStoryIndex += 1;
+    if (_currentStoryIndex + 1 != widget.storyItems.length) {
+      _animationCR!.stop();
+      _beginPlay();
     } else {
       // this is the last page, progress animation should skip to end
-      _animationController!
-          .animateTo(1.0, duration: const Duration(milliseconds: 10));
+      _animationCR!.animateTo(1.0, duration: const Duration(milliseconds: 10));
     }
   }
 
@@ -619,10 +226,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
     _nextDebouncer = null;
   }
 
-  void _removeNextHold() {
-    _nextDebouncer?.cancel();
-    _nextDebouncer = null;
-  }
+  void _removeNextHold() => _clearDebouncer();
 
   void _holdNext() {
     _nextDebouncer?.cancel();
@@ -635,7 +239,11 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
       color: Colors.white,
       child: Stack(
         children: <Widget>[
-          _currentView,
+          widget.builder(
+            context,
+            widget.storyItems[_currentStoryIndex]!,
+            _currentStoryIndex,
+          ),
           Visibility(
             visible: widget.progressPosition != ProgressPosition.none,
             child: Align(
@@ -644,15 +252,13 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
                   : Alignment.bottomCenter,
               child: SafeArea(
                 bottom: widget.inline ? false : true,
-                // we use SafeArea here for notched and bezeles phones
-                child: Container(
+                child: Padding(
                   padding: widget.indicatorOuterPadding,
                   child: PageBar(
-                    widget.storyItems
-                        .map((it) => PageData(it!.duration, it.shown))
-                        .toList(),
-                    _currentAnimation,
                     key: UniqueKey(),
+                    currentIndex: _currentStoryIndex,
+                    itemCount: widget.storyItems.length,
+                    animation: _currentAnimation,
                     indicatorHeight: widget.indicatorHeight,
                     indicatorColor: widget.indicatorColor,
                     indicatorForegroundColor: widget.indicatorForegroundColor,
@@ -662,56 +268,38 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
             ),
           ),
           Align(
+            alignment: Alignment.center,
+            heightFactor: 1,
+            child: SizedBox(
+              width: MediaQuery.sizeOf(context).width - 140,
+              child: GestureDetector(
+                onTapDown: (_) {
+                  widget.controller.pause();
+                },
+                onTapCancel: () {
+                  widget.controller.play();
+                },
+                onTapUp: (_) {
+                  // if debounce timed out (not active) then continue anim
+                  if (_nextDebouncer?.isActive == false) {
+                    widget.controller.play();
+                  } else {
+                    widget.controller.next();
+                  }
+                },
+              ),
+            ),
+          ),
+          Align(
             alignment: Alignment.centerRight,
             heightFactor: 1,
-            child: GestureDetector(
-              onTapDown: (details) {
-                widget.controller.pause();
-              },
-              onTapCancel: () {
-                widget.controller.play();
-              },
-              onTapUp: (details) {
-                // if debounce timed out (not active) then continue anim
-                if (_nextDebouncer?.isActive == false) {
-                  widget.controller.play();
-                } else {
+            child: SizedBox(
+              width: 70,
+              child: GestureDetector(
+                onTap: () {
                   widget.controller.next();
-                }
-              },
-              onVerticalDragStart: widget.onVerticalSwipeComplete == null
-                  ? null
-                  : (details) {
-                      widget.controller.pause();
-                    },
-              onVerticalDragCancel: widget.onVerticalSwipeComplete == null
-                  ? null
-                  : () {
-                      widget.controller.play();
-                    },
-              onVerticalDragUpdate: widget.onVerticalSwipeComplete == null
-                  ? null
-                  : (details) {
-                      verticalDragInfo ??= VerticalDragInfo();
-
-                      verticalDragInfo!.update(details.primaryDelta!);
-
-                      // TODO: provide callback interface for animation purposes
-                    },
-              onVerticalDragEnd: widget.onVerticalSwipeComplete == null
-                  ? null
-                  : (details) {
-                      widget.controller.play();
-                      // finish up drag cycle
-                      if (!verticalDragInfo!.cancel &&
-                          widget.onVerticalSwipeComplete != null) {
-                        widget.onVerticalSwipeComplete!(
-                          verticalDragInfo!.direction,
-                        );
-                      }
-
-                      verticalDragInfo = null;
-                    },
+                },
+              ),
             ),
           ),
           Align(
@@ -745,15 +333,17 @@ class PageData {
 /// Horizontal bar displaying a row of [StoryProgressIndicator] based on the
 /// [pages] provided.
 class PageBar extends StatefulWidget {
-  final List<PageData> pages;
+  final int itemCount;
+  final int currentIndex;
   final Animation<double>? animation;
   final IndicatorHeight indicatorHeight;
   final Color? indicatorColor;
   final Color? indicatorForegroundColor;
 
-  const PageBar(
-    this.pages,
-    this.animation, {
+  const PageBar({
+    required this.itemCount,
+    required this.currentIndex,
+    this.animation,
     this.indicatorHeight = IndicatorHeight.large,
     this.indicatorColor,
     this.indicatorForegroundColor,
@@ -771,46 +361,41 @@ class PageBarState extends State<PageBar> {
   void initState() {
     super.initState();
 
-    int count = widget.pages.length;
+    int count = widget.itemCount;
     spacing = (count > 15) ? 2 : ((count > 10) ? 3 : 4);
 
-    widget.animation!.addListener(() {
-      setState(() {});
-    });
+    widget.animation!.addListener(() => setState(() {}));
   }
 
   @override
   void setState(fn) {
-    if (mounted) {
-      super.setState(fn);
-    }
-  }
-
-  bool isPlaying(PageData page) {
-    return widget.pages.firstWhereOrNull((it) => !it.shown) == page;
+    if (mounted) super.setState(fn);
   }
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: widget.pages.map((it) {
-        return Expanded(
-          child: Container(
-            padding:
-                EdgeInsets.only(right: widget.pages.last == it ? 0 : spacing),
-            child: StoryProgressIndicator(
-              isPlaying(it) ? widget.animation!.value : (it.shown ? 1 : 0),
-              indicatorHeight: widget.indicatorHeight == IndicatorHeight.large
-                  ? 5
-                  : widget.indicatorHeight == IndicatorHeight.medium
-                      ? 3
-                      : 2,
-              indicatorColor: widget.indicatorColor,
-              indicatorForegroundColor: widget.indicatorForegroundColor,
+      children: [
+        for (var i = 0; i < widget.itemCount; ++i)
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right:
+                    widget.currentIndex + 1 == widget.itemCount ? 0 : spacing,
+              ),
+              child: StoryProgressIndicator(
+                widget.currentIndex == i ? widget.animation!.value : 0,
+                indicatorHeight: widget.indicatorHeight == IndicatorHeight.large
+                    ? 5
+                    : widget.indicatorHeight == IndicatorHeight.medium
+                        ? 3
+                        : 2,
+                indicatorColor: widget.indicatorColor,
+                indicatorForegroundColor: widget.indicatorForegroundColor,
+              ),
             ),
           ),
-        );
-      }).toList(),
+      ],
     );
   }
 }
