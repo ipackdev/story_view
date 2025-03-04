@@ -283,15 +283,6 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 }
 
-/// Capsule holding the duration and shown property of each story. Passed down
-/// to the pages bar to render the page indicators.
-class PageData {
-  Duration duration;
-  bool shown;
-
-  PageData(this.duration, this.shown);
-}
-
 /// Horizontal bar displaying a row of [StoryProgressIndicator] based on the
 /// [pages] provided.
 class PageBar extends StatelessWidget {
@@ -314,7 +305,7 @@ class PageBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double spacing = (itemCount > 15) ? 2 : (itemCount > 10 ? 3 : 4);
+    final double spacing = switch (itemCount) { > 15 => 2, > 10 => 3, _ => 4 };
 
     return Row(
       children: [
@@ -359,15 +350,7 @@ class PageBar extends StatelessWidget {
   }
 }
 
-/// Custom progress bar. Supposed to be lighter than the
-/// original [ProgressIndicator], and rounded at the sides.
 class StoryProgressIndicator extends StatelessWidget {
-  /// From `0.0` to `1.0`, determines the progress of the indicator
-  final double value;
-  final double indicatorHeight;
-  final Color? indicatorColor;
-  final Color? indicatorForegroundColor;
-
   const StoryProgressIndicator(
     this.value, {
     super.key,
@@ -375,6 +358,11 @@ class StoryProgressIndicator extends StatelessWidget {
     this.indicatorColor,
     this.indicatorForegroundColor,
   });
+
+  final double value;
+  final double indicatorHeight;
+  final Color? indicatorColor;
+  final Color? indicatorForegroundColor;
 
   @override
   Widget build(BuildContext context) {
