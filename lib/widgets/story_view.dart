@@ -329,7 +329,9 @@ class PageBar extends StatelessWidget {
                       animation: animation!,
                       builder: (context, _) {
                         return StoryProgressIndicator(
-                          currentIndex == i ? animation!.value : 0,
+                          currentIndex == i
+                              ? animation!.value
+                              : (currentIndex >= i ? 1 : 0),
                           indicatorHeight: switch (indicatorHeight) {
                             IndicatorHeight.large => 5,
                             IndicatorHeight.medium => 3,
