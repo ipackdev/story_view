@@ -104,7 +104,6 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 
   Future<void> _listenPlayback(PlaybackState playbackStatus) async {
-    print(playbackStatus);
     await _isReady.future;
     switch (playbackStatus) {
       case PlaybackState.play:
@@ -123,8 +122,6 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    print('$StoryViewState dispose');
-
     _animationCR?.dispose();
     _playbackSub?.cancel();
 
@@ -256,7 +253,6 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
             child: SizedBox(
               width: 70,
               child: GestureDetector(
-                behavior: HitTestBehavior.deferToChild,
                 onTap: () {
                   widget.controller.next();
                 },
@@ -269,7 +265,6 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
             child: SizedBox(
               width: 70,
               child: GestureDetector(
-                behavior: HitTestBehavior.deferToChild,
                 onTap: () {
                   widget.controller.previous();
                 },
@@ -392,7 +387,7 @@ class IndicatorOval extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(0, 0, size.width * widthFactor, size.height),
-        const Radius.circular(3),
+        const Radius.circular(2),
       ),
       paint,
     );
