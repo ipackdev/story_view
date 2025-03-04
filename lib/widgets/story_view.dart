@@ -104,8 +104,8 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 
   Future<void> _listenPlayback(PlaybackState playbackStatus) async {
-    // print(playbackStatus);
-    // await _isReady?.future;
+    print(playbackStatus);
+    await _isReady.future;
     switch (playbackStatus) {
       case PlaybackState.play:
         _animationCR?.forward();
@@ -177,6 +177,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 
   void _goBack() {
+    if (widget.itemCount == 1) return;
     if (_currentStoryIndex != 0) _currentStoryIndex -= 1;
     _beginPlay();
   }
@@ -187,6 +188,8 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
       _animationCR!.stop();
       _beginPlay();
+    } else if (widget.itemCount == 1) {
+      return;
     } else {
       // this is the last page, progress animation should skip to end
       _animationCR!.animateTo(1.0, duration: const Duration(milliseconds: 10));
@@ -253,6 +256,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
             child: SizedBox(
               width: 70,
               child: GestureDetector(
+                behavior: HitTestBehavior.deferToChild,
                 onTap: () {
                   widget.controller.next();
                 },
@@ -265,6 +269,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
             child: SizedBox(
               width: 70,
               child: GestureDetector(
+                behavior: HitTestBehavior.deferToChild,
                 onTap: () {
                   widget.controller.previous();
                 },
