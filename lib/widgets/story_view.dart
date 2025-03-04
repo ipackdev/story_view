@@ -87,7 +87,6 @@ class StoryView extends StatefulWidget {
 class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   AnimationController? _animationCR;
   Animation<double>? _currentAnimation;
-  Timer? _nextDebouncer;
 
   StreamSubscription<PlaybackState>? _playbackSub;
 
@@ -105,23 +104,19 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 
   Future<void> _listenPlayback(PlaybackState playbackStatus) async {
-    print(playbackStatus);
-    await _isReady?.future;
+    // print(playbackStatus);
+    // await _isReady?.future;
     switch (playbackStatus) {
       case PlaybackState.play:
-        _removeNextHold();
         _animationCR?.forward();
 
       case PlaybackState.pause:
-        _holdNext(); // then pause animation
         _animationCR?.stop(canceled: false);
 
       case PlaybackState.next:
-        _removeNextHold();
         _goForward();
 
       case PlaybackState.previous:
-        _removeNextHold();
         _goBack();
     }
   }
@@ -129,7 +124,6 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   @override
   void dispose() {
     print('$StoryViewState dispose');
-    _clearDebouncer();
 
     _animationCR?.dispose();
     _playbackSub?.cancel();
@@ -197,18 +191,6 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
       // this is the last page, progress animation should skip to end
       _animationCR!.animateTo(1.0, duration: const Duration(milliseconds: 10));
     }
-  }
-
-  void _clearDebouncer() {
-    _nextDebouncer?.cancel();
-    _nextDebouncer = null;
-  }
-
-  void _removeNextHold() => _clearDebouncer();
-
-  void _holdNext() {
-    _nextDebouncer?.cancel();
-    _nextDebouncer = Timer(const Duration(milliseconds: 500), () {});
   }
 
   void _onReady(Duration duration) {
