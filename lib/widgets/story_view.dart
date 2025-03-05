@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:developer' show log;
 
 import 'package:flutter/material.dart';
+import 'package:rxdart/rxdart.dart' show BehaviorSubject;
 import 'package:story_view/controller/story_controller.dart';
 
 /// Indicates where the progress indicators should be placed.
@@ -85,116 +87,114 @@ class StoryView extends StatefulWidget {
 }
 
 class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
-  AnimationController? _animationCR;
-  Animation<double>? _currentAnimation;
+  late final AnimationController _animationCR;
+  late final Animation<double> _currentAnimation;
 
-  StreamSubscription<PlaybackState>? _playbackSub;
+  PlaybackState _playbackPastState = PlaybackState.idle;
+  late final StreamSubscription<PlaybackState> _playbackSub;
+  BehaviorSubject<PlaybackState> get _playbackStoryNR =>
+      widget.controller.playbackNotifier;
 
   Completer _isReady = Completer();
-  int _currentStoryIndex = 0;
+  final _currentIndexNR = ValueNotifier<int>(0);
+  int get _currentIndex => _currentIndexNR.value;
   Duration? _currentDuration;
 
   @override
   void initState() {
     super.initState();
 
-    _playbackSub = widget.controller.playbackNotifier.listen(_listenPlayback);
+    _animationCR = AnimationController(vsync: this);
+    _animationCR.addStatusListener(_animationListener);
+    _currentAnimation = Tween(begin: 0.0, end: 1.0).animate(_animationCR);
 
-    _play().then((_) => setState(() {}));
+    _playbackSub = _playbackStoryNR.listen(_listenPlayback);
+    widget.controller.play();
   }
 
-  Future<void> _listenPlayback(PlaybackState playbackStatus) async {
-    await _isReady.future;
-    switch (playbackStatus) {
-      case PlaybackState.play:
-        _animationCR?.forward();
-
-      case PlaybackState.pause:
-        _animationCR?.stop(canceled: false);
-
-      case PlaybackState.next:
-        _goForward();
-
-      case PlaybackState.previous:
-        _goBack();
-    }
+  void _animationListener(AnimationStatus status) {
+    if (status == AnimationStatus.completed) _onAnimationComplete();
   }
 
   @override
   void dispose() {
-    _animationCR?.dispose();
-    _playbackSub?.cancel();
+    _animationCR.dispose();
+    _playbackSub.cancel();
 
     super.dispose();
   }
 
-  @override
-  void setState(fn) {
-    if (mounted) super.setState(fn);
-  }
-
-  Future<void> _play() async {
-    _animationCR?.dispose();
-
-    widget.onStoryShow?.call(_currentStoryIndex);
+  Future<void> _listenPlayback(PlaybackState playbackStatus) async {
+    log('StoryView._listenPlayback=$playbackStatus');
     await _isReady.future;
+    _animationCR.duration = _currentDuration;
 
-    _animationCR = AnimationController(duration: _currentDuration, vsync: this);
+    switch (playbackStatus) {
+      case PlaybackState.play:
+        _onPlay();
 
-    _animationCR!.addStatusListener((status) {
-      print(status);
-      if (status == AnimationStatus.completed) {
-        if (_currentStoryIndex + 1 == widget.itemCount) {
-          _onComplete();
-        } else {
-          _currentStoryIndex += 1;
-          _beginPlay();
-        }
-      }
-    });
+      case PlaybackState.pause:
+        _onPause();
 
-    _currentAnimation = Tween(begin: 0.0, end: 1.0).animate(_animationCR!);
+      case PlaybackState.previous:
+        _onPrevious();
 
-    widget.controller.play();
-  }
+      case PlaybackState.next:
+        _onNext();
 
-  void _beginPlay() {
-    _play();
-    setState(() {});
-  }
-
-  void _onComplete() {
-    widget.onComplete?.call();
-    if (widget.onComplete != null) widget.controller.pause();
-
-    if (widget.repeat) {
-      _currentStoryIndex = 0;
-      _beginPlay();
+      case PlaybackState.idle:
     }
+
+    _playbackPastState = playbackStatus;
   }
 
-  void _goBack() {
-    if (widget.itemCount == 1) return;
-    if (_currentStoryIndex != 0) _currentStoryIndex -= 1;
-    _beginPlay();
+  void _onAnimationComplete() {
+    _onNext();
   }
 
-  void _goForward() {
-    if (_currentStoryIndex + 1 != widget.itemCount) {
-      _currentStoryIndex += 1;
+  void _onPause() {
+    _animationCR.stop(canceled: false);
+  }
 
-      _animationCR!.stop();
-      _beginPlay();
-    } else if (widget.itemCount == 1) {
+  /// Not responsible for the [_currentIndex], since [_onAnimationComplete] is responsible for it
+  void _onPlay() {
+    if (_playbackPastState == PlaybackState.pause) {
+      _animationCR.forward();
       return;
-    } else {
-      // this is the last page, progress animation should skip to end
-      _animationCR!.animateTo(1.0, duration: const Duration(milliseconds: 10));
     }
+
+    widget.onStoryShow?.call(_currentIndex);
+
+    _animationCR.reset();
+    _animationCR.forward();
+  }
+
+  void _onPrevious() {
+    if (_currentIndex != 0) {
+      _currentIndexNR.value = (_currentIndex - 1) % widget.itemCount;
+    }
+
+    _animationCR.reset();
+    _animationCR.forward();
+
+    if (_currentIndex != 0) _isReady = Completer();
+  }
+
+  void _onNext() {
+    _currentIndexNR.value = (_currentIndex + 1) % widget.itemCount;
+    if (_currentIndex == 0) {
+      widget.onComplete?.call();
+      if (!widget.repeat) return;
+    }
+
+    _animationCR.reset();
+    _animationCR.forward();
+
+    _isReady = Completer();
   }
 
   void _onReady(Duration duration) {
-    if (_isReady.isCompleted == false) {
+    if (!_isReady.isCompleted) {
       _currentDuration = duration;
       _isReady.complete();
     }
@@ -206,32 +206,41 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
       color: Colors.white,
       child: Stack(
         children: <Widget>[
-          widget.itemBuilder(
-            context,
-            _currentStoryIndex,
-            _onReady,
+          ValueListenableBuilder(
+            valueListenable: _currentIndexNR,
+            builder: (context, index, _) => widget.itemBuilder(
+              context,
+              index,
+              _onReady,
+            ),
           ),
-          Visibility(
-            visible: widget.progressPosition != ProgressPosition.none,
-            child: Align(
-              alignment: widget.progressPosition == ProgressPosition.top
-                  ? Alignment.topCenter
-                  : Alignment.bottomCenter,
-              child: SafeArea(
-                bottom: !widget.inline,
-                child: Padding(
-                  padding: widget.indicatorOuterPadding,
-                  child: PageBar(
-                    currentIndex: _currentStoryIndex,
-                    itemCount: widget.itemCount,
-                    animation: _currentAnimation,
-                    indicatorHeight: widget.indicatorHeight,
-                    indicatorColor: widget.indicatorColor,
-                    indicatorForegroundColor: widget.indicatorForegroundColor,
+          AnimatedBuilder(
+            animation: _currentAnimation,
+            builder: (context, _) {
+              return Visibility(
+                visible: widget.progressPosition != ProgressPosition.none,
+                child: Align(
+                  alignment: widget.progressPosition == ProgressPosition.top
+                      ? Alignment.topCenter
+                      : Alignment.bottomCenter,
+                  child: SafeArea(
+                    bottom: !widget.inline,
+                    child: Padding(
+                      padding: widget.indicatorOuterPadding,
+                      child: PageBar(
+                        currentIndex: _currentIndex,
+                        itemCount: widget.itemCount,
+                        animation: _currentAnimation,
+                        indicatorHeight: widget.indicatorHeight,
+                        indicatorColor: widget.indicatorColor,
+                        indicatorForegroundColor:
+                            widget.indicatorForegroundColor,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
           Center(
             heightFactor: 1,

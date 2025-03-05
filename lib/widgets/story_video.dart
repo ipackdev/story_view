@@ -41,6 +41,7 @@ class StoryVideoState extends State<StoryVideo> {
   void initState() {
     super.initState();
 
+    // todo(05.03.2025): перенести
     widget.storyController.pause();
 
     widget.playerCRInit.call().then((_) {
@@ -67,7 +68,7 @@ class StoryVideoState extends State<StoryVideo> {
       color: Colors.black,
       child: SizedBox.expand(
         child: Center(
-          child: widget.errorDescription != null
+          child: widget.errorDescription == null
               ? _videoPRisInitialized
                   ? AspectRatio(
                       aspectRatio: widget.playerAspectRatio,
