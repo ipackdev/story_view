@@ -14,6 +14,7 @@ class StoryVideo extends StatefulWidget {
     required this.videoWidget,
     this.loadingWidget,
     this.errorWidget,
+    this.errorDescription,
   });
 
   final StoryController storyController;
@@ -26,6 +27,7 @@ class StoryVideo extends StatefulWidget {
 
   final Widget? loadingWidget;
   final Widget? errorWidget;
+  final String? errorDescription;
 
   @override
   State<StatefulWidget> createState() => StoryVideoState();
@@ -65,12 +67,14 @@ class StoryVideoState extends State<StoryVideo> {
       color: Colors.black,
       child: SizedBox.expand(
         child: Center(
-          child: _videoPRisInitialized
-              ? AspectRatio(
-                  aspectRatio: widget.playerAspectRatio,
-                  child: widget.videoWidget,
-                )
-              : widget.loadingWidget ?? const CircularProgressIndicator(),
+          child: widget.errorDescription != null
+              ? _videoPRisInitialized
+                  ? AspectRatio(
+                      aspectRatio: widget.playerAspectRatio,
+                      child: widget.videoWidget,
+                    )
+                  : widget.loadingWidget ?? const CircularProgressIndicator()
+              : widget.errorWidget ?? const Text('Video upload error'),
         ),
       ),
     );
