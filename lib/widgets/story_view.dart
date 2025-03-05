@@ -102,6 +102,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
   @override
   void initState() {
+    log('StoryView.initState');
     super.initState();
 
     _animationCR = AnimationController(vsync: this);
@@ -118,6 +119,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    log('StoryView.dispose');
     _animationCR.dispose();
     _playbackSub.cancel();
 
@@ -170,6 +172,8 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 
   void _onPrevious() {
+    if (widget.itemCount == 1) return;
+
     if (_currentIndex != 0) {
       _currentIndexNR.value = (_currentIndex - 1) % widget.itemCount;
     }
@@ -181,6 +185,8 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 
   void _onNext() {
+    if (widget.itemCount == 1) return;
+
     _currentIndexNR.value = (_currentIndex + 1) % widget.itemCount;
     if (_currentIndex == 0) {
       widget.onComplete?.call();
@@ -214,33 +220,30 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
               _onReady,
             ),
           ),
-          AnimatedBuilder(
-            animation: _currentAnimation,
-            builder: (context, _) {
-              return Visibility(
-                visible: widget.progressPosition != ProgressPosition.none,
-                child: Align(
-                  alignment: widget.progressPosition == ProgressPosition.top
-                      ? Alignment.topCenter
-                      : Alignment.bottomCenter,
-                  child: SafeArea(
-                    bottom: !widget.inline,
-                    child: Padding(
-                      padding: widget.indicatorOuterPadding,
-                      child: PageBar(
-                        currentIndex: _currentIndex,
-                        itemCount: widget.itemCount,
-                        animation: _currentAnimation,
-                        indicatorHeight: widget.indicatorHeight,
-                        indicatorColor: widget.indicatorColor,
-                        indicatorForegroundColor:
-                            widget.indicatorForegroundColor,
-                      ),
+          Visibility(
+            visible: widget.progressPosition != ProgressPosition.none,
+            child: Align(
+              alignment: widget.progressPosition == ProgressPosition.top
+                  ? Alignment.topCenter
+                  : Alignment.bottomCenter,
+              child: SafeArea(
+                bottom: !widget.inline,
+                child: Padding(
+                  padding: widget.indicatorOuterPadding,
+                  child: AnimatedBuilder(
+                    animation: _currentAnimation,
+                    builder: (context, _) => PageBar(
+                      currentIndex: _currentIndex,
+                      itemCount: widget.itemCount,
+                      animation: _currentAnimation,
+                      indicatorHeight: widget.indicatorHeight,
+                      indicatorColor: widget.indicatorColor,
+                      indicatorForegroundColor: widget.indicatorForegroundColor,
                     ),
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
           Center(
             heightFactor: 1,
