@@ -39,6 +39,9 @@ class StoryView extends StatefulWidget {
   /// Should the story be repeated forever?
   final bool repeat;
 
+  /// Should we play this story straight through?
+  final bool autostart;
+
   /// If you would like to display the story as full-page, then set this to
   /// `false`. But in case you would display this as part of a page (eg. in
   /// a [ListView] or [Column]) then set this to `true`.
@@ -71,6 +74,7 @@ class StoryView extends StatefulWidget {
     this.onStoryShow,
     required this.itemBuilder,
     this.progressPosition = ProgressPosition.top,
+    this.autostart = true,
     this.repeat = false,
     this.inline = false,
     this.indicatorColor,
@@ -110,7 +114,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
     _currentAnimation = Tween(begin: 0.0, end: 1.0).animate(_animationCR);
 
     _playbackSub = _playbackStoryNR.listen(_listenPlayback);
-    widget.controller.play();
+    if (widget.autostart) widget.controller.play();
   }
 
   void _animationListener(AnimationStatus status) {
