@@ -91,21 +91,21 @@ class StoryView extends StatefulWidget {
   final Widget? stackChild;
 
   @override
-  State<StatefulWidget> createState() => StoryViewState();
+  State<StatefulWidget> createState() => _StoryViewState();
 }
 
-class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
+class _StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   late final AnimationController _animationCR;
   late final Animation<double> _currentAnimation;
 
   PlaybackState _playbackPastState = PlaybackState.idle;
   late final StreamSubscription<PlaybackState> _playbackSub;
   BehaviorSubject<PlaybackState> get _playbackStoryNR =>
-      widget.controller.playbackNotifier;
+      widget.controller.playbackNR;
 
   Completer _isReady = Completer();
-  final _currentIndexNR = ValueNotifier<int>(0);
-  int get _currentIndex => _currentIndexNR.value;
+  ValueNotifier<int> get _currentIndexNR => widget.controller.currentIndexNR;
+  int get _currentIndex => widget.controller.currentIndex;
   Duration? _currentDuration;
 
   @override
@@ -122,6 +122,8 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 
   void _animationListener(AnimationStatus status) {
+    if (widget.controller.isDisposed) return;
+
     if (status == AnimationStatus.completed) _onAnimationComplete();
   }
 
@@ -139,9 +141,11 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
     _log('StoryView._listenPlayback=$playbackStatus, '
         'storyCRisDisposed=$storyCRisDisposed');
 
-    // if (storyCRisDisposed) return;
+    if (storyCRisDisposed) return;
 
     await _isReady.future;
+    if (widget.controller.isDisposed) return;
+
     _animationCR.duration = _currentDuration;
 
     switch (playbackStatus) {

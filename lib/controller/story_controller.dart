@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:rxdart/rxdart.dart';
 
 enum PlaybackState { pause, play, next, previous, idle }
@@ -7,47 +9,53 @@ enum PlaybackState { pause, play, next, previous, idle }
 /// also paused.
 /// Another reason for using the controller is to place the stories on `paused`
 /// state when a media is loading.
-class StoryController {
-  StoryController() {
-    playbackNotifier.add(PlaybackState.idle);
+class StoryController extends ValueNotifier<void> {
+  StoryController() : super(null) {
+    playbackNR.add(PlaybackState.idle);
   }
 
+  final currentIndexNR = ValueNotifier<int>(0);
+  int get currentIndex => currentIndexNR.value;
+
   /// Stream that broadcasts the playback state of the stories.
-  final playbackNotifier = BehaviorSubject<PlaybackState>();
+  final playbackNR = BehaviorSubject<PlaybackState>();
 
   /// Notify listeners with a [PlaybackState.pause] state
   void pause() {
     if (isDisposed) return;
 
-    playbackNotifier.add(PlaybackState.pause);
+    playbackNR.add(PlaybackState.pause);
   }
 
   /// Notify listeners with a [PlaybackState.play] state
   void play() {
     if (isDisposed) return;
 
-    playbackNotifier.add(PlaybackState.play);
+    playbackNR.add(PlaybackState.play);
   }
 
   void next() {
     if (isDisposed) return;
 
-    playbackNotifier.add(PlaybackState.next);
+    playbackNR.add(PlaybackState.next);
   }
 
   void previous() {
     if (isDisposed) return;
 
-    playbackNotifier.add(PlaybackState.previous);
+    playbackNR.add(PlaybackState.previous);
   }
 
-  PlaybackState get lastValue => playbackNotifier.value;
+  PlaybackState get lastValue => playbackNR.value;
 
-  bool get isDisposed => playbackNotifier.isClosed;
+  bool get isDisposed => playbackNR.isClosed;
 
   /// Remember to call dispose when the story screen is disposed to close
   /// the notifier stream.
+  @override
   void dispose() {
-    playbackNotifier.close();
+    playbackNR.close();
+    currentIndexNR.dispose();
+    super.dispose();
   }
 }
