@@ -1,6 +1,6 @@
 name: story_view
 description: Display stories just like Whatsapp & Instagram. Can be used inline/inside ListView or Column just like Google News app. Comes with gestures to pause, forward & go to previous page.
-version: 0.17.2
+version: 1.0.0
 
 environment:
   sdk: ^3.4.0
@@ -8,7 +8,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_cache_manager: ^3.4.1
   rxdart: ^0.28.0
   collection: ^1.19.1
 
