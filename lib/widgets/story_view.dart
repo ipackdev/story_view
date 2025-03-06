@@ -132,10 +132,10 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
     _animationCR.duration = _currentDuration;
 
     switch (playbackStatus) {
-      case PlaybackState.play:
+      case PlaybackState.play when _playbackPastState != PlaybackState.play:
         _onPlay();
 
-      case PlaybackState.pause:
+      case PlaybackState.pause when _playbackPastState != PlaybackState.pause:
         _onPause();
 
       case PlaybackState.previous:
@@ -144,7 +144,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
       case PlaybackState.next:
         _onNext();
 
-      case PlaybackState.idle:
+      case PlaybackState.idle || _:
     }
 
     _playbackPastState = playbackStatus;
