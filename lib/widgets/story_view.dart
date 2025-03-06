@@ -259,7 +259,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
             ),
           ),
           Center(
-            heightFactor: 1,
+            heightFactor: 0.8,
             child: SizedBox(
               width: MediaQuery.sizeOf(context).width - 140,
               child: GestureDetector(
@@ -274,7 +274,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
           ),
           Align(
             alignment: Alignment.centerRight,
-            heightFactor: 1,
+            heightFactor: 0.8,
             child: SizedBox(
               width: 70,
               child: GestureDetector(
@@ -286,7 +286,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
           ),
           Align(
             alignment: Alignment.centerLeft,
-            heightFactor: 1,
+            heightFactor: 0.8,
             child: SizedBox(
               width: 70,
               child: GestureDetector(
