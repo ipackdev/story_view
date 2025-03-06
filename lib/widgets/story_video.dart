@@ -41,9 +41,6 @@ class StoryVideoState extends State<StoryVideo> {
   void initState() {
     super.initState();
 
-    // todo(05.03.2025): перенести
-    widget.storyController.pause();
-
     widget.playerCRInit.call().then((_) {
       if (mounted) {
         setState(() {
