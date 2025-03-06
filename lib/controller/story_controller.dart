@@ -33,7 +33,7 @@ class StoryController {
     playbackNotifier.add(PlaybackState.previous);
   }
 
-  PlaybackState? get lastValue => playbackNotifier.valueOrNull;
+  PlaybackState get lastValue => playbackNotifier.value;
 
   /// Remember to call dispose when the story screen is disposed to close
   /// the notifier stream.
