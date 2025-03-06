@@ -16,6 +16,28 @@ enum IndicatorHeight { small, medium, large }
 /// inline/inside [ListView] or [Column] just like Google News app. Comes with
 /// gestures to pause, forward and go to previous page.
 class StoryView extends StatefulWidget {
+  const StoryView({
+    super.key,
+    required this.itemCount,
+    required this.controller,
+    this.onComplete,
+    this.stackChild,
+    this.onStoryShow,
+    required this.itemBuilder,
+    this.progressPosition = ProgressPosition.top,
+    this.autostart = true,
+    this.repeat = false,
+    this.inline = false,
+    this.enableLogs = false,
+    this.indicatorColor,
+    this.indicatorForegroundColor,
+    this.indicatorHeight = IndicatorHeight.large,
+    this.indicatorOuterPadding = const EdgeInsets.symmetric(
+      horizontal: 16,
+      vertical: 8,
+    ),
+  });
+
   /// The pages to displayed.
   final int itemCount;
 
@@ -38,6 +60,9 @@ class StoryView extends StatefulWidget {
 
   /// Should the story be repeated forever?
   final bool repeat;
+
+  /// Use logs?
+  final bool enableLogs;
 
   /// Should we play this story straight through?
   final bool autostart;
@@ -65,27 +90,6 @@ class StoryView extends StatefulWidget {
   /// A widget that appears on top of all elements. Maybe [Positioned]
   final Widget? stackChild;
 
-  const StoryView({
-    super.key,
-    required this.itemCount,
-    required this.controller,
-    this.onComplete,
-    this.stackChild,
-    this.onStoryShow,
-    required this.itemBuilder,
-    this.progressPosition = ProgressPosition.top,
-    this.autostart = true,
-    this.repeat = false,
-    this.inline = false,
-    this.indicatorColor,
-    this.indicatorForegroundColor,
-    this.indicatorHeight = IndicatorHeight.large,
-    this.indicatorOuterPadding = const EdgeInsets.symmetric(
-      horizontal: 16,
-      vertical: 8,
-    ),
-  });
-
   @override
   State<StatefulWidget> createState() => StoryViewState();
 }
@@ -106,7 +110,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
   @override
   void initState() {
-    log('StoryView.initState');
+    _log('StoryView.initState');
     super.initState();
 
     _animationCR = AnimationController(vsync: this);
@@ -123,7 +127,7 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    log('StoryView.dispose');
+    _log('StoryView.dispose');
     _animationCR.dispose();
     _playbackSub.cancel();
 
@@ -131,7 +135,12 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 
   Future<void> _listenPlayback(PlaybackState playbackStatus) async {
-    log('StoryView._listenPlayback=$playbackStatus');
+    final storyCRisDisposed = widget.controller.isDisposed;
+    _log('StoryView._listenPlayback=$playbackStatus, '
+        'storyCRisDisposed=$storyCRisDisposed');
+
+    // if (storyCRisDisposed) return;
+
     await _isReady.future;
     _animationCR.duration = _currentDuration;
 
@@ -291,6 +300,10 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
         ],
       ),
     );
+  }
+
+  void _log(String message) {
+    if (widget.enableLogs) log('$message HC=${widget.controller.hashCode}');
   }
 }
 
