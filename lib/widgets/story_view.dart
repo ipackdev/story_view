@@ -168,7 +168,13 @@ class _StoryViewState extends State<StoryView> with TickerProviderStateMixin {
   }
 
   void _onAnimationComplete() {
-    _onNext();
+    if (widget.itemCount == 1) {
+      _isReady = Completer();
+      _animationCR.reset();
+      widget.controller.finish();
+    } else {
+      _onNext();
+    }
   }
 
   void _onPause() {
