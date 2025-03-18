@@ -9,7 +9,6 @@ dependencies:
   flutter:
     sdk: flutter
   rxdart: ^0.28.0
-  collection: ^1.19.1
 
 dev_dependencies:
   flutter_test:
