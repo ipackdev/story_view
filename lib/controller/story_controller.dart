@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:rxdart/rxdart.dart';
 
-enum PlaybackState { pause, play, next, previous, idle }
+enum PlaybackState { pause, play, next, previous, idle, finish }
 
 /// Controller to sync playback between animated child (story) views. This
 /// helps make sure when stories are paused, the animation (gifs/slides) are
@@ -44,6 +44,12 @@ class StoryController extends ValueNotifier<void> {
     if (isDisposed) return;
 
     playbackNR.add(PlaybackState.previous);
+  }
+
+  void finish() {
+    if (isDisposed) return;
+
+    playbackNR.add(PlaybackState.finish);
   }
 
   PlaybackState get lastValue => playbackNR.value;
