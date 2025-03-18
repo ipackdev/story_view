@@ -161,6 +161,7 @@ class _StoryViewState extends State<StoryView> with TickerProviderStateMixin {
       case PlaybackState.next:
         _onNext();
 
+      case PlaybackState.finish:
       case PlaybackState.idle || _:
     }
 
@@ -403,11 +404,11 @@ class StoryProgressIndicator extends StatelessWidget {
     return CustomPaint(
       size: Size.fromHeight(indicatorHeight),
       foregroundPainter: IndicatorOval(
-        indicatorForegroundColor ?? Colors.white.withOpacity(0.8),
+        indicatorForegroundColor ?? Colors.white.withValues(alpha: 0.8),
         value,
       ),
       painter: IndicatorOval(
-        indicatorColor ?? Colors.white.withOpacity(0.4),
+        indicatorColor ?? Colors.white.withValues(alpha: 0.8),
         1.0,
       ),
     );
