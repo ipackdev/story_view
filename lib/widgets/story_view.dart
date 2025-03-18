@@ -162,6 +162,8 @@ class _StoryViewState extends State<StoryView> with TickerProviderStateMixin {
         _onNext();
 
       case PlaybackState.finish:
+        widget.controller.idle();
+
       case PlaybackState.idle || _:
     }
 
@@ -214,6 +216,7 @@ class _StoryViewState extends State<StoryView> with TickerProviderStateMixin {
     _currentIndexNR.value = (_currentIndex + 1) % widget.itemCount;
     if (_currentIndex == 0) {
       widget.onComplete?.call();
+      widget.controller.finish();
       if (!widget.repeat) return;
     }
 
