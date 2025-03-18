@@ -52,6 +52,12 @@ class StoryController extends ValueNotifier<void> {
     playbackNR.add(PlaybackState.finish);
   }
 
+  void idle() {
+    if (isDisposed) return;
+
+    playbackNR.add(PlaybackState.idle);
+  }
+
   PlaybackState get lastValue => playbackNR.value;
 
   bool get isDisposed => playbackNR.isClosed;
